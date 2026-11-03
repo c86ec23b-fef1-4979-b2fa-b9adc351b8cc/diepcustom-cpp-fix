@@ -24,11 +24,11 @@ class Barrel : public ObjectEntity {
 public:
     BarrelDefinition* definition;
     Ref<BarrelBase> tank;
-    ShootCycle* shootCycle;
+    std::unique_ptr<ShootCycle> shootCycle;
     bool attemptingShot = false;
     double bulletAccel = 20;
     int droneCount = 0;
-    std::vector<BarrelAddon*> addons;
+    std::vector<std::unique_ptr<BarrelAddon>> addons;
     BarrelData barrelData;
 
     Barrel(BarrelBase* owner, BarrelDefinition* barrelDefinition);

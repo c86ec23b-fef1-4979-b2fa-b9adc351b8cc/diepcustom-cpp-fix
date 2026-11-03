@@ -38,5 +38,5 @@ protected:
     BarrelBase* guardOwner;
 };
 
-using AddonFactory = std::function<Addon*(BarrelBase*)>;
+using AddonFactory = std::function<std::unique_ptr<Addon>(BarrelBase*)>;
 extern const std::unordered_map<std::string, AddonFactory> AddonById;

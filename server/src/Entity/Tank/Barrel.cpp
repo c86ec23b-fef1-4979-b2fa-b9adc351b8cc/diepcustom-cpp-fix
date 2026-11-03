@@ -21,7 +21,7 @@
 #include <cmath>
 #include <optional>
 
-Barrel::~Barrel() { delete shootCycle; for (BarrelAddon* a : addons) delete a; }
+Barrel::~Barrel() = default;
 
 // ---- ShootCycle ----
 
@@ -81,7 +81,7 @@ Barrel::Barrel(BarrelBase* owner, BarrelDefinition* barrelDefinition)
     }
 
     barrelData.setTrapezoidDirection(barrelDefinition->trapezoidDirection);
-    shootCycle = new ShootCycle(this);
+    shootCycle = std::make_unique<ShootCycle>(this);
 
     calculateStatData();
 }

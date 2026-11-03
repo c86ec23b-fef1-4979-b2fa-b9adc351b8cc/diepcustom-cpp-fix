@@ -21,8 +21,8 @@
 ArenaEntity::ArenaEntity(GameServer* game) : Entity(game), arenaData(this), teamData(this) {
     // Publish before building sub-entities: their ctors read game->arena.
     game->arena = this;
-    bossManager = new BossManager(this);
-    shapes = new ShapeManager(this);
+    bossManager = std::make_unique<BossManager>(this);
+    shapes = std::make_unique<ShapeManager>(this);
 
     updateBounds(width = 22300, height = 22300);
 
@@ -38,10 +38,7 @@ ArenaEntity::ArenaEntity(GameServer* game) : Entity(game), arenaData(this), team
     teamData.teamColor = Color::Neutral;
 }
 
-ArenaEntity::~ArenaEntity() {
-    delete bossManager;
-    delete shapes;
-}
+ArenaEntity::~ArenaEntity() = default;
 
 VectorAbstract ArenaEntity::findSpawnLocation(double w, double h) {
     VectorAbstract pos{(double)(int)(util::randomFloat() * w - w / 2), (double)(int)(util::randomFloat() * h - h / 2)};

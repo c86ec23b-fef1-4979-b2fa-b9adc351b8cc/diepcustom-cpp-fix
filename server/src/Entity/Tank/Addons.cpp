@@ -312,21 +312,24 @@ public:
     }
 };
 
+template <class T>
+static std::unique_ptr<Addon> createAddon(BarrelBase* owner) { return std::make_unique<T>(owner); }
+
 const std::unordered_map<std::string, AddonFactory> AddonById = {
-    { "spike",          [](BarrelBase* o) -> Addon* { return new SpikeAddon(o); } },
-    { "dombase",        [](BarrelBase* o) -> Addon* { return new DomBaseAddon(o); } },
-    { "launcher",       [](BarrelBase* o) -> Addon* { return new LauncherAddon(o); } },
-    { "dompronounced",  [](BarrelBase* o) -> Addon* { return new PronouncedDomAddon(o); } },
-    { "auto5",          [](BarrelBase* o) -> Addon* { return new Auto5Addon(o); } },
-    { "auto3",          [](BarrelBase* o) -> Addon* { return new Auto3Addon(o); } },
-    { "autosmasher",    [](BarrelBase* o) -> Addon* { return new AutoSmasherAddon(o); } },
-    { "pronounced",     [](BarrelBase* o) -> Addon* { return new PronouncedAddon(o); } },
-    { "smasher",        [](BarrelBase* o) -> Addon* { return new SmasherAddon(o); } },
-    { "landmine",       [](BarrelBase* o) -> Addon* { return new LandmineAddon(o); } },
-    { "autoturret",     [](BarrelBase* o) -> Addon* { return new AutoTurretAddon(o); } },
-    { "weirdspike",     [](BarrelBase* o) -> Addon* { return new WeirdSpikeAddon(o); } },
-    { "auto7",          [](BarrelBase* o) -> Addon* { return new Auto7Addon(o); } },
-    { "auto2",          [](BarrelBase* o) -> Addon* { return new Auto2Addon(o); } },
-    { "autorocket",     [](BarrelBase* o) -> Addon* { return new AutoRocketAddon(o); } },
-    { "spiesk",         [](BarrelBase* o) -> Addon* { return new SpieskAddon(o); } },
+    { "spike",          createAddon<SpikeAddon> },
+    { "dombase",        createAddon<DomBaseAddon> },
+    { "launcher",       createAddon<LauncherAddon> },
+    { "dompronounced",  createAddon<PronouncedDomAddon> },
+    { "auto5",          createAddon<Auto5Addon> },
+    { "auto3",          createAddon<Auto3Addon> },
+    { "autosmasher",    createAddon<AutoSmasherAddon> },
+    { "pronounced",     createAddon<PronouncedAddon> },
+    { "smasher",        createAddon<SmasherAddon> },
+    { "landmine",       createAddon<LandmineAddon> },
+    { "autoturret",     createAddon<AutoTurretAddon> },
+    { "weirdspike",     createAddon<WeirdSpikeAddon> },
+    { "auto7",          createAddon<Auto7Addon> },
+    { "auto2",          createAddon<Auto2Addon> },
+    { "autorocket",     createAddon<AutoRocketAddon> },
+    { "spiesk",         createAddon<SpieskAddon> },
 };

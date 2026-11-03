@@ -45,7 +45,7 @@ void ClientSet::clear() {
 
 GameServer::GameServer(ArenaFactory arenaFactory, const std::string& gamemode, const std::string& name)
     : gamemode(gamemode), name(name), clients(this), arenaFactory(std::move(arenaFactory)) {
-    entities = new EntityManager(this);
+    entities = std::make_unique<EntityManager>(this);
     tick = 0;
     arena = this->arenaFactory(this);
     games.push_back(this);
@@ -54,7 +54,7 @@ GameServer::GameServer(ArenaFactory arenaFactory, const std::string& gamemode, c
 GameServer::~GameServer() {
     games.erase(std::find(games.begin(), games.end(), this));
     entities->clear();
-    delete entities;
+    entities.reset();
 }
 
 void GameServer::broadcastPlayerCount() {
@@ -86,8 +86,8 @@ void GameServer::start() {
     // Clear camera handles before freeing the manager they point into.
     for (Client* client : clients) client->camera = nullptr;
 
-    delete entities;
-    entities = new EntityManager(this);
+    entities.reset();
+    entities = std::make_unique<EntityManager>(this);
     tick = 0;
     arena = arenaFactory(this);
 

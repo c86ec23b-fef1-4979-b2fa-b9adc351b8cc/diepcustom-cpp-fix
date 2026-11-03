@@ -11,7 +11,7 @@ Drone::Drone(Barrel* barrel, BarrelBase* tank, TankDefinition* tankDefinition, d
 {
     usePosAngle = true;
 
-    ai = new AI(this);
+    ai = std::make_unique<AI>(this);
     ai->viewRange = 900;
     ai->doAimPrediction = true;
     ai->targetFilter = [this](const VectorAbstract& targetPos) -> bool {

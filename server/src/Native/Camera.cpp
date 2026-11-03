@@ -217,7 +217,7 @@ void ClientCamera::updateView(int tick) {
     WSWriterStream w = client->write();
     w.u8(ClientBound::Update).vu(tick);
 
-    EntityManager* entities = game->entities;
+    EntityManager* entities = game->entities.get();
     uint32_t stamp = ++entities->stampCounter;
     if (stamp == 0) {
         std::fill(entities->viewStamp.begin(), entities->viewStamp.end(), 0u);

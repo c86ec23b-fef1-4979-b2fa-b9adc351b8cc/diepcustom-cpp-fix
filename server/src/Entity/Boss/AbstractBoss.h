@@ -30,7 +30,7 @@ class AbstractBoss : public LivingEntity {
 public:
     NameData nameData;
     std::string altName = "";
-    AI* ai;
+    std::unique_ptr<AI> ai;
     std::shared_ptr<Inputs> inputs;
 
     double movementSpeed = 0.5;
@@ -38,7 +38,6 @@ public:
     static bool isBoss(Entity* e) { return e && (e->entityTags & EntityTags::isBoss); }
 
     explicit AbstractBoss(GameServer* game);
-    ~AbstractBoss() override { delete ai; }
 
     NameData* getNameData() override { return &nameData; }
 

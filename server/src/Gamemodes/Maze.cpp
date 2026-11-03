@@ -18,16 +18,14 @@ static const MazeGeneratorConfig MAZE_CONFIG = {
 MazeArena::MazeArena(GameServer* game)
     : ArenaEntity(game), mazeGenerator(MAZE_CONFIG)
 {
-    delete shapes;
-    shapes = new MazeShapeManager(this);
+    shapes = std::make_unique<MazeShapeManager>(this);
 
     updateBounds(ARENA_SIZE, ARENA_SIZE);
 
     mazeGenerator.generate();
     mazeGenerator.placeWalls(this);
 
-    delete bossManager;
-    bossManager = nullptr;
+    bossManager.reset();
 
     // The maze closes every 5 hours; the next instance generates a new one.
     GameServer* g = game;

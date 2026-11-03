@@ -30,7 +30,7 @@ public:
     PositionData positionData;
     StyleData styleData;
 
-    DeletionAnimation* deletionAnimation = nullptr;
+    std::unique_ptr<DeletionAnimation> deletionAnimation;
     bool isPhysical = true;
     bool isChild = false;
     std::vector<ObjectEntity*> children;
@@ -45,7 +45,6 @@ public:
     std::shared_ptr<Inputs> inputs;
 
     explicit ObjectEntity(GameServer* game);
-    ~ObjectEntity() override { delete deletionAnimation; }
 
     RelationsData* getRelationsData() override { return &relationsData; }
     PhysicsData* getPhysicsData() override { return &physicsData; }

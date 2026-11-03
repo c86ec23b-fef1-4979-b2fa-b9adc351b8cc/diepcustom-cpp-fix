@@ -48,6 +48,6 @@ PurpleBarrelAddon::PurpleBarrelAddon(Barrel* owner) : BarrelAddon(owner) {
 // ---- registry ----
 
 const std::unordered_map<std::string, BarrelAddonFactory> BarrelAddonById = {
-    { "trapLauncher",  [](Barrel* o) -> BarrelAddon* { return new TrapLauncherAddon(o); } },
-    { "purplebarrel",  [](Barrel* o) -> BarrelAddon* { return new PurpleBarrelAddon(o); } },
+    { "trapLauncher",  [](Barrel* o) -> std::unique_ptr<BarrelAddon> { return std::make_unique<TrapLauncherAddon>(o); } },
+    { "purplebarrel",  [](Barrel* o) -> std::unique_ptr<BarrelAddon> { return std::make_unique<PurpleBarrelAddon>(o); } },
 };

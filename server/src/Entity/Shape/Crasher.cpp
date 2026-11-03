@@ -21,7 +21,7 @@ Crasher::Crasher(GameServer* game, bool large) : AbstractShape(game), isLarge(la
     damagePerTick = 2;
     targettingSpeed = large ? 2.64 : 2.602;
 
-    ai = new AI(this);
+    ai = std::make_unique<AI>(this);
     ai->viewRange = 2000;
     ai->movementSpeed = targettingSpeed;
     ai->aimSpeed = targettingSpeed * 9; // prediction wants travel speed, not accel; terminal v = 9a

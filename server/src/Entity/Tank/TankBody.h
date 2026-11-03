@@ -51,5 +51,5 @@ public:
     void tick(int tick) override;
 
 private:
-    std::vector<Addon*> addons;
+    std::vector<std::unique_ptr<Addon>> addons;
 };

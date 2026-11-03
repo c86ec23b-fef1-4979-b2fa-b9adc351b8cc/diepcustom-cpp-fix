@@ -8,8 +8,7 @@ NecromancerSquare::NecromancerSquare(Barrel* barrel, BarrelBase* tank, TankDefin
 {
     const BulletDefinition& bulletDef = barrel->definition->bullet;
 
-    delete ai;
-    ai = new AI(this);
+    ai = std::make_unique<AI>(this);
     ai->viewRange = 600;
     ai->movementSpeed = baseAccel;
     ai->aimSpeed = baseAccel * 9;

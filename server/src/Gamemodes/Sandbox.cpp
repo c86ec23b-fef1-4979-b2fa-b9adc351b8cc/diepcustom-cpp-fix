@@ -14,8 +14,7 @@ int SandboxShapeManager::wantedShapes() const {
 }
 
 SandboxArena::SandboxArena(GameServer* game) : ArenaEntity(game) {
-    delete shapes;
-    shapes = new SandboxShapeManager(this);
+    shapes = std::make_unique<SandboxShapeManager>(this);
 
     arenaData.setFlags(arenaData.flags | ArenaFlags::canUseCheats);
     state = ArenaState::OPEN;

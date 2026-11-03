@@ -54,7 +54,7 @@ AbstractBoss::AbstractBoss(GameServer* game)
     scoreReward = 30000.0 * game->arena->shapeScoreRewardMultiplier;
     damagePerTick = 10;
 
-    ai = new AI(this);
+    ai = std::make_unique<AI>(this);
     ai->viewRange = 2000;
     ai->setFindTargetInterval(0);
     inputs = ai->inputs;

@@ -17,7 +17,7 @@ Mothership::Mothership(GameServer* game)
     relationsData.setTeam(game->arena);
     styleData.setColor(Color::Neutral);
 
-    ai = new AI(this, true);
+    ai = std::make_unique<AI>(this, true);
     ai->inputs = inputs;
     ai->viewRange = 2000;
 

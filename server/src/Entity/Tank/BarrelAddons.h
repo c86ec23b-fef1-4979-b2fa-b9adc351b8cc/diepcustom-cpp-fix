@@ -41,5 +41,5 @@ public:
     explicit PurpleBarrelAddon(Barrel* owner);
 };
 
-using BarrelAddonFactory = std::function<BarrelAddon*(Barrel*)>;
+using BarrelAddonFactory = std::function<std::unique_ptr<BarrelAddon>(Barrel*)>;
 extern const std::unordered_map<std::string, BarrelAddonFactory> BarrelAddonById;

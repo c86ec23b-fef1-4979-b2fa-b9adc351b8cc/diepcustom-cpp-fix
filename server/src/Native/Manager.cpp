@@ -22,12 +22,10 @@ EntityManager::EntityManager(GameServer* game) : game(game) {
     viewStamp.assign(16384, 0);
     rangeStamp.assign(16384, 0);
     freeBits.assign(16384 / 64, ~0ull);
-    collisionManager = new HashGrid(game);
+    collisionManager = std::make_unique<HashGrid>(game);
 }
 
-EntityManager::~EntityManager() {
-    delete collisionManager;
-}
+EntityManager::~EntityManager() = default;
 
 Entity* EntityManager::add(Entity* entity) {
     for (size_t word = 0; word < freeBits.size(); ++word) {

@@ -18,8 +18,7 @@ int SurvivalShapeManager::wantedShapes() const {
 }
 
 SurvivalArena::SurvivalArena(GameServer* game) : ArenaEntity(game) {
-    delete shapes;
-    shapes = new SurvivalShapeManager(this);
+    shapes = std::make_unique<SurvivalShapeManager>(this);
 
     shapeScoreRewardMultiplier = 3.0;
 

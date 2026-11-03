@@ -15,12 +15,11 @@ public:
     static constexpr double SIZE = 160;
     static const std::vector<int> DOMINATOR_CLASSES;
 
-    AI* ai;
+    std::unique_ptr<AI> ai;
     TeamBase* base;
     std::string prefix = "";
 
     Dominator(ArenaEntity* arena, TeamBase* base, int tankId = -1);
-    ~Dominator() override { delete ai; }
 
     static bool isDominator(Entity* e) { return e && (e->entityTags & EntityTags::isDominator); }
 

@@ -7,10 +7,9 @@ class ArenaCloser : public TankBody {
 public:
     static constexpr double BASE_SIZE = 175;
 
-    AI* ai;
+    std::unique_ptr<AI> ai;
 
     explicit ArenaCloser(GameServer* game);
-    ~ArenaCloser() override { delete ai; }
 
     void tick(int tick) override;
 };

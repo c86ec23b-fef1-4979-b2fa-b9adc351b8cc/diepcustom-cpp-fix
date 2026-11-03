@@ -20,7 +20,7 @@ ArenaCloser::ArenaCloser(GameServer* game)
 
     relationsData.setTeam(game->arena);
 
-    ai = new AI(this);
+    ai = std::make_unique<AI>(this);
     ai->inputs = inputs;
     ai->viewRange = std::numeric_limits<double>::infinity();
 

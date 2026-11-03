@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -53,7 +54,7 @@ public:
     bool playersOnMap = false;
     ClientSet clients;
     std::vector<std::pair<Client*, std::string>> clientsAwaitingSpawn; // insertion-ordered
-    EntityManager* entities = nullptr;
+    std::unique_ptr<EntityManager> entities;
     int tick = 0;
     ArenaEntity* arena = nullptr;
     // Disconnected clients pending free; uWS .close can fire reentrantly mid-tick.

@@ -26,8 +26,7 @@ int TagShapeManager::wantedShapes() const {
 }
 
 TagArena::TagArena(GameServer* game) : ArenaEntity(game) {
-    delete shapes;
-    shapes = new TagShapeManager(this);
+    shapes = std::make_unique<TagShapeManager>(this);
 
     shapeScoreRewardMultiplier = 3.0;
     arenaData.setFlags(arenaData.flags | ArenaFlags::hiddenScores);

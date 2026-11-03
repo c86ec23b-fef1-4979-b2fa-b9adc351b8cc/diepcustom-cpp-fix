@@ -17,7 +17,7 @@ public:
 
     BarrelBase* owner;
     Barrel* turret;
-    AI* ai;
+    std::unique_ptr<AI> ai;
     bool influencedByOwnerInputs = false;
     double baseSize;
     BarrelDefinition turretDefinitionStorage;
@@ -27,7 +27,6 @@ public:
     Ref<ObjectEntity> rotator;
 
     AutoTurret(BarrelBase* owner, const BarrelDefinition* turretDefinition = &AutoTurretDefinition, double baseSize = 25);
-    ~AutoTurret() override { delete ai; }
 
     NameData* getNameData() override { return &nameData; }
 

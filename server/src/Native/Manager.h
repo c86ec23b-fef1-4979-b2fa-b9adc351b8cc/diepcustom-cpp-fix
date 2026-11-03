@@ -14,7 +14,7 @@ class AI;
 class EntityManager {
 public:
     GameServer* game;
-    CollisionManager* collisionManager;
+    std::unique_ptr<CollisionManager> collisionManager;
 
     int zIndex = 0;
 

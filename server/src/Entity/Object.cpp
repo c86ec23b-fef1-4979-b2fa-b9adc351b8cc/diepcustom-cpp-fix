@@ -86,10 +86,10 @@ bool ObjectEntity::isColliding(ObjectEntity* objA, ObjectEntity* objB) {
 
 void ObjectEntity::destroy(bool animate) {
     if (!animate) {
-        if (deletionAnimation) { delete deletionAnimation; deletionAnimation = nullptr; }
+        deletionAnimation.reset();
         delete_();
     } else if (!deletionAnimation) {
-        deletionAnimation = new DeletionAnimation(this);
+        deletionAnimation = std::make_unique<DeletionAnimation>(this);
     }
 }
 

@@ -5,11 +5,10 @@
 
 class Mothership : public TankBody {
 public:
-    AI* ai;
+    std::unique_ptr<AI> ai;
     int possessionStartTick = -1;
 
     explicit Mothership(GameServer* game);
-    ~Mothership() override { delete ai; }
 
     void onDeath(LivingEntity* killer) override;
     void delete_() override;

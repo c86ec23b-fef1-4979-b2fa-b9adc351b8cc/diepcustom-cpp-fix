@@ -45,7 +45,7 @@ TankBody::TankBody(GameServer* game, CameraEntity* cam, std::shared_ptr<Inputs> 
     entityTags |= EntityTags::isTank;
 }
 
-TankBody::~TankBody() { for (Addon* a : addons) delete a; }
+TankBody::~TankBody() = default;
 
 void TankBody::setTank(int id) {
     for (ObjectEntity* child : children) {
@@ -54,7 +54,6 @@ void TankBody::setTank(int id) {
     }
     children.clear();
     barrels.clear();
-    for (Addon* a : addons) delete a;
     addons.clear();
 
     TankDefinition* tank = getTankById(id);
@@ -265,7 +264,6 @@ void TankBody::destroy(bool animate) {
             cd->setRespawnLevel(respawn);
         }
         barrels.clear();
-        for (Addon* a : addons) delete a;
         addons.clear();
     }
     LivingEntity::destroy(animate);

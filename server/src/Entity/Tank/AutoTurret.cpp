@@ -44,7 +44,7 @@ AutoTurret::AutoTurret(BarrelBase* ownerIn, const BarrelDefinition* turretDefini
     cameraEntity = ownerIn->cameraEntity;
     reloadTime = 15;
 
-    ai = new AI(this);
+    ai = std::make_unique<AI>(this);
     ai->doAimPrediction = true;
     inputs = ai->inputs;
 

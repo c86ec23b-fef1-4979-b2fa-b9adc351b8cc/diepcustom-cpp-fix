@@ -4,11 +4,10 @@
 
 class Crasher : public AbstractShape {
 public:
-    AI* ai;
+    std::unique_ptr<AI> ai;
     bool isLarge;
 
     explicit Crasher(GameServer* game, bool large = false);
-    ~Crasher() override { delete ai; }
 
     void tick(int tick) override;
 

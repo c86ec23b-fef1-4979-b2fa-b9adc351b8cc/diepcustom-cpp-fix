@@ -31,7 +31,7 @@ Dominator::Dominator(ArenaEntity* arena, TeamBase* base, int tankId)
     physicsData.size = SIZE;
     styleData.setColor(Color::Neutral);
 
-    ai = new AI(this, true);
+    ai = std::make_unique<AI>(this, true);
     ai->inputs = inputs;
     ai->movementSpeed = 0;
     ai->viewRange = 2000;

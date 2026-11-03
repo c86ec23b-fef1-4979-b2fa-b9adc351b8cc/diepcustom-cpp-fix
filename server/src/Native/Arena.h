@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -27,7 +28,7 @@ public:
     double height;
     ArenaState state = ArenaState::COUNTDOWN;
     double shapeScoreRewardMultiplier = 1;
-    BossManager* bossManager;
+    std::unique_ptr<BossManager> bossManager;
     Ref<TankBody> leader;
     double ARENA_PADDING = 200;
 
@@ -74,5 +75,5 @@ public:
     virtual void updateArenaState();
 
 protected:
-    ShapeManager* shapes;
+    std::unique_ptr<ShapeManager> shapes;
 };
