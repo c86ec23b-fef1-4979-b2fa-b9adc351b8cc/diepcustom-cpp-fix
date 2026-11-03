@@ -15,11 +15,6 @@ public:
         buffer.push_back((uint8_t)(val & 0xff));
         return *this;
     }
-    Writer& u16(int val) {
-        uint16_t v = (uint16_t)(val & 0xffff);
-        appendRaw(&v, 2);
-        return *this;
-    }
     Writer& u32(uint32_t val) {
         appendRaw(&val, 4);
         return *this;

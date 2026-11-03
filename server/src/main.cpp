@@ -100,6 +100,8 @@ int main() {
         .compression = uWS::SHARED_COMPRESSOR,
         .maxPayloadLength = config::wssMaxMessageSize,
         .idleTimeout = 10,
+        .maxBackpressure = 1024 * 1024,
+        .closeOnBackpressureLimit = true,
         .upgrade = [](auto* res, auto* req, auto* context) {
             PerSocketData data;
             data.gamemode = std::string(req->getUrl().substr(1));

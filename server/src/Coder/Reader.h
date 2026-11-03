@@ -14,14 +14,6 @@ public:
 
     uint8_t u8() { need(1); return buffer[at++]; }
 
-    uint16_t u16() {
-        need(2);
-        uint16_t v;
-        std::memcpy(&v, buffer + at, 2);
-        at += 2;
-        return v;
-    }
-
     uint32_t u32() {
         need(4);
         uint32_t v;
