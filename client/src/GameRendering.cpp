@@ -1265,7 +1265,7 @@ void GameRendering::renderHUD(cp5::Context& ctx, Simulation& sim, double now, do
         } else if (cam) {
             px = cam->cameraX.getLinear(now);
             py = cam->cameraY.getLinear(now);
-            have = true;
+            // We are dead, so no minimap arrow
         }
         if (have && aw > 0 && ah > 0) {
             double u = (px - arenaData->leftX) / aw;
