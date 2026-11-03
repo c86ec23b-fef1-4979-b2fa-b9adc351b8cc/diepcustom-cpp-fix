@@ -4,34 +4,28 @@
 #include <unordered_map>
 #include <vector>
 
-namespace cp5 { class Context; }
+#include "WorldBackend.h"
 
 // WebGL2 world renderer: every shape is one instanced quad whose fragment shader evaluates the
 // exact signed distance to its outline, so fill, round-joined stroke and their antialiasing
 // match the Canvas2D path (fill, then stroke over it, both at the shape's alpha). Alpha groups
 // render into an offscreen layer composited over the rect GameRendering gives.
-class WorldRenderer {
+class WorldRenderer : public WorldBackend {
 public:
     // False while WebGL2 is unavailable or the context is lost: the caller draws the world itself.
     bool beginFrame(int width, int height, double cameraX, double cameraY, double zoom);
-    // What follows until endComposite fades as one at alpha; x/y/w/h bound it in device pixels.
-    void beginComposite(double alpha, double x, double y, double w, double h);
-    void endComposite();
+    void beginComposite(double alpha, double x, double y, double w, double h) override;
+    void endComposite() override;
     void shape(int sides, uint32_t physicsFlags, uint32_t styleFlags, double size, double width,
                double borderWidth, double x, double y, double angle, uint32_t fill, uint32_t stroke,
-               double alpha);
-    // The background, drawn before anything else in the frame. While a frame has one, the
-    // base canvas under this one is hidden.
-    void solidBackground(uint32_t rgb);
-    // The tile's canvas (uploaded again when changed) repeated like a Canvas2D pattern fill
-    // under setTransform(scale, 0, 0, scale, 0, 0) and translate(originX, originY), sampled
-    // bilinearly.
-    void patternBackground(cp5::Context& tile, bool changed, double scale, double originX, double originY);
-    // A Canvas2D fillRect in device pixels.
-    void screenRect(double x, double y, double w, double h, uint32_t rgb, double alpha);
-    // A cp5 canvas (uploaded again when changed) over the world-space quad with corners
-    // top-left, top-right, bottom-left, bottom-right, sampled bilinearly.
-    void image(cp5::Context& canvas, bool changed, const double corners[8], double alpha);
+               double alpha) override;
+    // While a frame has one, the base canvas under this one is hidden.
+    void solidBackground(uint32_t rgb) override;
+    // The tile is uploaded again when changed and sampled bilinearly.
+    void patternBackground(cp5::Context& tile, bool changed, double scale, double originX, double originY) override;
+    void screenRect(double x, double y, double w, double h, uint32_t rgb, double alpha) override;
+    // The canvas is uploaded again when changed and sampled bilinearly.
+    void image(cp5::Context& canvas, bool changed, const double corners[8], double alpha) override;
     void endFrame();
     void disable();
 

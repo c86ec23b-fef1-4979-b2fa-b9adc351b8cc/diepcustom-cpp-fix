@@ -47,15 +47,17 @@ void GameRendering::render(cp5::Context& ctx, Simulation& sim, double now) {
     bool useGL = config::renWorldGL && worldRenderer.beginFrame(
         cp5::canvasWidth(), cp5::canvasHeight(), camX, camY, solvedZoom);
     if (!config::renWorldGL) worldRenderer.disable();
+    canvasWorld.begin(ctx, camX, camY, solvedZoom);
+    WorldBackend& world = useGL ? static_cast<WorldBackend&>(worldRenderer) : canvasWorld;
     // The GL canvas also takes the background, borders and arrows and hides the base canvas,
     // unless the debug quadtree (drawn between them and the entities) or the line grid needs it.
-    WorldRenderer* glBase = useGL && config::renBackground && (config::renSolidBackground || config::renPatternGrid) &&
-                                    !config::renDebugCollisions
-                                ? &worldRenderer
-                                : nullptr;
+    WorldBackend& base = useGL && config::renBackground && (config::renSolidBackground || config::renPatternGrid) &&
+                                 !config::renDebugCollisions
+                             ? world
+                             : canvasWorld;
 
-    if (config::renBackground) renderGrid(ctx, glBase);
-    renderBorders(ctx, sim, glBase);
+    if (config::renBackground) renderGrid(ctx, base);
+    renderBorders(sim, base);
 
     screenRectW = cp5::canvasWidth() / (double)solvedZoom;
     screenRectH = cp5::canvasHeight() / (double)solvedZoom;
@@ -78,9 +80,9 @@ void GameRendering::render(cp5::Context& ctx, Simulation& sim, double now) {
     }
     // Before the connection's first spawn only the background and borders draw.
     if (spawnedThisConnection) {
-        renderLeaderArrow(ctx, sim, now, glBase);
-        renderMothershipArrows(ctx, sim, now, glBase);
-        renderEntities(ctx, sim, now, useGL ? &worldRenderer : nullptr);
+        renderLeaderArrow(base, sim, now);
+        renderMothershipArrows(base, sim, now);
+        renderEntities(world, sim, now);
     }
     if (useGL) {
         worldRenderer.endFrame();
@@ -211,8 +213,7 @@ void GameRendering::renderDebugCollisions(cp5::Context& ctx, double now) {
 
 // ---- Off-screen arrows ----
 
-void GameRendering::renderArrow(cp5::Context& ctx, const std::string& text, double tx, double ty, uint32_t color,
-                                WorldRenderer* gl) {
+void GameRendering::renderArrow(WorldBackend& world, const std::string& text, double tx, double ty, uint32_t color) {
     double ui = std::max(cp5::canvasWidth() / 1920.0, cp5::canvasHeight() / 1080.0) * config::uiScale;
     double m = 50 * ui / solvedZoom;
     double minX = screenRectX + m, maxX = screenRectX + screenRectW - m;
@@ -227,68 +228,45 @@ void GameRendering::renderArrow(cp5::Context& ctx, const std::string& text, doub
     double alpha = std::min(1.0, std::max(0.0, (std::sqrt(dx * dx + dy * dy) - 2700.0) / 100.0)) * 0.35;
     if (alpha <= 0) return;
 
-    if (gl) {
-        // The label is rastered at about the device scale, then drawn rotated where the canvas
-        // path would draw it: origin (-width / 2, 48) in the rotated frame.
-        ArrowLabel& label = arrowLabels[text];
-        double scale = std::ceil(solvedZoom * 16) / 16;
-        bool changed = !label.canvas || label.scale != scale;
-        if (changed) {
-            if (!label.canvas) label.canvas = std::make_unique<cp5::Context>(true);
-            cp5::Context& c = *label.canvas;
-            double size = 25 * scale;
-            c.setFontSize(size);
-            double textWidth = c.measureText(text);
-            int margin = (int)std::ceil(size * 0.2) + 2;
-            c.setSize((int)std::ceil(textWidth) + 2 * margin, (int)std::ceil(size * 1.5) + 2 * margin);
-            c.clear();
-            c.resetTransform();
-            c.setAlpha(1);
-            drawLabel(c, text, margin + textWidth / 2, c.height() / 2.0, size, 0xffffff);
-            label.scale = scale;
-            label.width = textWidth / scale;
-            label.margin = margin;
-        }
-        double left = -label.width / 2 - label.margin / scale, top = 48 - label.canvas->height() / 2.0 / scale;
-        double right = left + label.canvas->width() / scale, bottom = top + label.canvas->height() / scale;
-        double angle = std::atan2(dy, dx), ca = std::cos(angle + M_PI / 2), sa = std::sin(angle + M_PI / 2);
-        double corners[8];
-        auto corner = [&](int i, double lx, double ly) {
-            corners[i * 2] = cx + ca * lx - sa * ly;
-            corners[i * 2 + 1] = cy + sa * lx + ca * ly;
-        };
-        corner(0, left, top);
-        corner(1, right, top);
-        corner(2, left, bottom);
-        corner(3, right, bottom);
-        gl->image(*label.canvas, changed, corners, alpha);
-        // The triangle below: a polygon of radius 50 with a vertex along the angle.
-        gl->shape(3, 0, 0, 50 / 1.414214, 0, 0, cx, cy, angle, color, color, alpha);
-        return;
+    // The label is rastered at about the device scale, then drawn rotated with its origin at
+    // (-width / 2, 48) in the arrow's frame turned a quarter.
+    ArrowLabel& label = arrowLabels[text];
+    double scale = std::ceil(solvedZoom * 16) / 16;
+    bool changed = !label.canvas || label.scale != scale;
+    if (changed) {
+        if (!label.canvas) label.canvas = std::make_unique<cp5::Context>(true);
+        cp5::Context& c = *label.canvas;
+        double size = 25 * scale;
+        c.setFontSize(size);
+        double textWidth = c.measureText(text);
+        int margin = (int)std::ceil(size * 0.2) + 2;
+        c.setSize((int)std::ceil(textWidth) + 2 * margin, (int)std::ceil(size * 1.5) + 2 * margin);
+        c.clear();
+        c.resetTransform();
+        c.setAlpha(1);
+        drawLabel(c, text, margin + textWidth / 2, c.height() / 2.0, size, 0xffffff);
+        label.scale = scale;
+        label.width = textWidth / scale;
+        label.margin = margin;
     }
-
-    ctx.save();
-    ctx.setAlpha(alpha);
-    ctx.translate(cx, cy);
-    ctx.rotate(std::atan2(dy, dx));
-
-    ctx.save();
-    ctx.rotate(M_PI / 2);
-    drawLabel(ctx, text, 0, 48, 25, 0xffffff);
-    ctx.restore();
-
-    ctx.scale(50, 50);
-    ctx.beginPath();
-    ctx.moveTo(-0.5, 0.866025);
-    ctx.lineTo(-0.5, -0.866025);
-    ctx.lineTo(1, 0);
-    ctx.closePath();
-    ctx.setFillColor(color);
-    ctx.fill();
-    ctx.restore();
+    double left = -label.width / 2 - label.margin / scale, top = 48 - label.canvas->height() / 2.0 / scale;
+    double right = left + label.canvas->width() / scale, bottom = top + label.canvas->height() / scale;
+    double angle = std::atan2(dy, dx), ca = std::cos(angle + M_PI / 2), sa = std::sin(angle + M_PI / 2);
+    double corners[8];
+    auto corner = [&](int i, double lx, double ly) {
+        corners[i * 2] = cx + ca * lx - sa * ly;
+        corners[i * 2 + 1] = cy + sa * lx + ca * ly;
+    };
+    corner(0, left, top);
+    corner(1, right, top);
+    corner(2, left, bottom);
+    corner(3, right, bottom);
+    world.image(*label.canvas, changed, corners, alpha);
+    // The triangle below: a polygon of radius 50 with a vertex along the angle.
+    world.shape(3, 0, 0, 50 / 1.414214, 0, 0, cx, cy, angle, color, color, alpha);
 }
 
-void GameRendering::renderLeaderArrow(cp5::Context& ctx, Simulation& sim, double now, WorldRenderer* gl) {
+void GameRendering::renderLeaderArrow(WorldBackend& world, Simulation& sim, double now) {
     (void)now;
     Entity* arena = sim.getArena();
     if (!arena || !arena->arena) return;
@@ -304,10 +282,10 @@ void GameRendering::renderLeaderArrow(cp5::Context& ctx, Simulation& sim, double
         leaderSmoothX += ((float)a.leaderX - leaderSmoothX) * k;
         leaderSmoothY += ((float)a.leaderY - leaderSmoothY) * k;
     }
-    renderArrow(ctx, "Leader", leaderSmoothX, leaderSmoothY, 0x000000, gl);
+    renderArrow(world, "Leader", leaderSmoothX, leaderSmoothY, 0x000000);
 }
 
-void GameRendering::renderMothershipArrows(cp5::Context& ctx, Simulation& sim, double now, WorldRenderer* gl) {
+void GameRendering::renderMothershipArrows(WorldBackend& world, Simulation& sim, double now) {
     (void)now;
     float k = (float)(1.0 - std::pow(0.9, frameTime / 16.666667));
     for (auto& [id, e] : sim.entities) {
@@ -319,7 +297,7 @@ void GameRendering::renderMothershipArrows(cp5::Context& ctx, Simulation& sim, d
             it->second.first += (e.team->mothershipX - it->second.first) * k;
             it->second.second += (e.team->mothershipY - it->second.second) * k;
         }
-        renderArrow(ctx, "Mothership", it->second.first, it->second.second, colorHex(e.team->teamColor), gl);
+        renderArrow(world, "Mothership", it->second.first, it->second.second, colorHex(e.team->teamColor));
     }
 }
 
@@ -380,7 +358,7 @@ bool GameRendering::drawGridTile(double alpha) {
     return true;
 }
 
-void GameRendering::renderGrid(cp5::Context& ctx, WorldRenderer* gl) {
+void GameRendering::renderGrid(cp5::Context& ctx, WorldBackend& world) {
     int w = cp5::canvasWidth(), h = cp5::canvasHeight();
     gridFade += (float)((1.0 - std::pow(0.95, frameTime / 16.666667)) * ((spawnedThisConnection ? 1.0f : 0.0f) - gridFade));
     gridFade = std::max(0.0f, std::min(1.0f, gridFade));
@@ -388,17 +366,7 @@ void GameRendering::renderGrid(cp5::Context& ctx, WorldRenderer* gl) {
     if (config::renSolidBackground) {
         // Grid ink folded into the fill: darken by base alpha * (1 - zoom * fade).
         float t = (float)(config::gridBaseAlpha * (1.0 - solvedZoom * gridFade));
-        uint32_t color = mix(unpack(config::backgroundColor), {0, 0, 0}, t).pack();
-        if (gl) {
-            gl->solidBackground(color);
-            return;
-        }
-        ctx.save();
-        ctx.resetTransform();
-        ctx.setAlpha(1);
-        ctx.setFillColor(color);
-        ctx.fillRect(0, 0, w, h);
-        ctx.restore();
+        world.solidBackground(mix(unpack(config::backgroundColor), {0, 0, 0}, t).pack());
         return;
     }
     // Line alpha scales with zoom (constant ink as line density changes), 1 device px.
@@ -409,16 +377,7 @@ void GameRendering::renderGrid(cp5::Context& ctx, WorldRenderer* gl) {
         bool changed = drawGridTile(alpha);
         double ox = std::fmod(std::fmod(w * 0.5 / solvedZoom - camX, GRID_SIZE) + GRID_SIZE, GRID_SIZE) - GRID_SIZE;
         double oy = std::fmod(std::fmod(h * 0.5 / solvedZoom - camY, GRID_SIZE) + GRID_SIZE, GRID_SIZE) - GRID_SIZE;
-        if (gl) {
-            gl->patternBackground(*gridTile, changed, solvedZoom, ox, oy);
-            return;
-        }
-        ctx.save();
-        ctx.setAlpha(1);
-        ctx.setTransform(solvedZoom, 0, 0, solvedZoom, 0, 0);
-        ctx.translate(ox, oy);
-        ctx.fillPattern(*gridTile, 0, 0, w / solvedZoom + GRID_SIZE, h / solvedZoom + GRID_SIZE);
-        ctx.restore();
+        world.patternBackground(*gridTile, changed, solvedZoom, ox, oy);
         return;
     }
     ctx.save();
@@ -449,7 +408,7 @@ void GameRendering::renderGrid(cp5::Context& ctx, WorldRenderer* gl) {
     ctx.restore();
 }
 
-void GameRendering::renderBorders(cp5::Context& ctx, Simulation& sim, WorldRenderer* gl) {
+void GameRendering::renderBorders(Simulation& sim, WorldBackend& world) {
     Entity* arena = sim.getArena();
     if (!arena || !arena->arena) return;
     ArenaData& a = *arena->arena;
@@ -474,23 +433,10 @@ void GameRendering::renderBorders(cp5::Context& ctx, Simulation& sim, WorldRende
     float maxX = std::min(w, sx(borderMaxX));
     float maxY = std::min(h, sy(borderMaxY));
 
-    if (gl) {
-        gl->screenRect(0, minY, minX, h - minY, config::borderColor, config::borderAlpha);
-        gl->screenRect(0, 0, maxX, minY, config::borderColor, config::borderAlpha);
-        gl->screenRect(maxX, 0, w - maxX, maxY, config::borderColor, config::borderAlpha);
-        gl->screenRect(minX, maxY, w - minX, h - maxY, config::borderColor, config::borderAlpha);
-        return;
-    }
-
-    ctx.save();
-    ctx.resetTransform();
-    ctx.setAlpha(config::borderAlpha);
-    ctx.setFillColor(config::borderColor);
-    ctx.fillRect(0, minY, minX, h - minY);
-    ctx.fillRect(0, 0, maxX, minY);
-    ctx.fillRect(maxX, 0, w - maxX, maxY);
-    ctx.fillRect(minX, maxY, w - minX, h - maxY);
-    ctx.restore();
+    world.screenRect(0, minY, minX, h - minY, config::borderColor, config::borderAlpha);
+    world.screenRect(0, 0, maxX, minY, config::borderColor, config::borderAlpha);
+    world.screenRect(maxX, 0, w - maxX, maxY, config::borderColor, config::borderAlpha);
+    world.screenRect(minX, maxY, w - minX, h - maxY, config::borderColor, config::borderAlpha);
 }
 
 void GameRendering::rebuildScene(Simulation& sim) {
@@ -521,7 +467,7 @@ void GameRendering::rebuildScene(Simulation& sim) {
     }
 }
 
-void GameRendering::renderEntities(cp5::Context& ctx, Simulation& sim, double now, WorldRenderer* gl) {
+void GameRendering::renderEntities(WorldBackend& world, Simulation& sim, double now) {
     if (sim.sceneDirty) {
         rebuildScene(sim);
         sim.sceneDirty = false;
@@ -534,7 +480,7 @@ void GameRendering::renderEntities(cp5::Context& ctx, Simulation& sim, double no
             if (x + r < screenRectX || x - r > screenRectX + screenRectW ||
                 y + r < screenRectY || y - r > screenRectY + screenRectH) continue;
         }
-        renderEntity(ctx, sim, *e, now, true, 1.0, Frame{}, childMap, true, gl);
+        renderEntity(world, sim, *e, now, true, 1.0, Frame{}, childMap);
     }
 }
 
@@ -603,8 +549,8 @@ GameRendering::Frame GameRendering::worldFrame(Simulation& sim, Entity& e, doubl
     return frameOf(e, now, parent && parent->position ? worldFrame(sim, *parent, now) : Frame{});
 }
 
-void GameRendering::renderEntity(cp5::Context& ctx, Simulation& sim, Entity& e, double now, bool applyAlpha, double strokeScale,
-                                 Frame parent, const ChildMap& childMap, bool allowComposite, WorldRenderer* gl) {
+void GameRendering::renderEntity(WorldBackend& world, Simulation& sim, Entity& e, double now, bool applyAlpha,
+                                 double strokeScale, Frame parent, const ChildMap& childMap, bool allowComposite) {
     if (!e.position || !e.style) return;
 
     Frame self = frameOf(e, now, parent);
@@ -617,13 +563,10 @@ void GameRendering::renderEntity(cp5::Context& ctx, Simulation& sim, Entity& e, 
     }
     if (alpha <= 0) return;
 
-    cp5::Context* target = &ctx;
     auto it = childMap.find(&e);
     // The composite pass exists so overlapping members fade as one; childless shapes fade directly.
     // Its region math is screen-space, so transformed targets (minimap) must opt out.
     bool composite = allowComposite && alpha < 1 && it != childMap.end();
-    bool directFade = alpha < 1 && !composite;
-    double regX = 0, regY = 0, regW = 0, regH = 0;
     if (composite) {
         // Composite only the entity's screen AABB; fullscreen composites are too expensive.
         double w = cp5::canvasWidth(), h = cp5::canvasHeight();
@@ -631,60 +574,27 @@ void GameRendering::renderEntity(cp5::Context& ctx, Simulation& sim, Entity& e, 
         double sy = (self.y - camY) * solvedZoom + h / 2;
         double rr = e.physics ? subtreeReach(e, now, childMap) + 50 : 200;
         rr *= solvedZoom;
-        regX = std::max(0.0, sx - rr);
-        regY = std::max(0.0, sy - rr);
-        regW = std::min(w, sx + rr) - regX;
-        regH = std::min(h, sy + rr) - regY;
+        double regX = std::max(0.0, sx - rr);
+        double regY = std::max(0.0, sy - rr);
+        double regW = std::min(w, sx + rr) - regX;
+        double regH = std::min(h, sy + rr) - regY;
         if (regW <= 0 || regH <= 0) return;
-    }
-    if (gl) {
-        if (composite) gl->beginComposite(alpha, regX, regY, regW, regH);
-        static const ChildLists noChildren;
-        const ChildLists& children = it != childMap.end() ? it->second : noChildren;
-        for (Entity* child : children.before)
-            renderEntity(ctx, sim, *child, now, applyAlpha, strokeScale, self, childMap, allowComposite, gl);
-        if (e.style->flags & StyleFlags::isVisible)
-            renderShape(ctx, e, now, strokeScale, self.x, self.y, self.angle, self, gl, directFade ? alpha : 1);
-        for (Entity* child : children.after)
-            renderEntity(ctx, sim, *child, now, applyAlpha, strokeScale, self, childMap, allowComposite, gl);
-        if (composite) gl->endComposite();
-        return;
-    }
-    if (composite) {
-        if (scratchDepth >= scratchPool.size()) scratchPool.push_back(std::make_unique<cp5::Context>(true));
-        target = scratchPool[scratchDepth].get();
-        ++scratchDepth;
-        target->setSize(cp5::canvasWidth(), cp5::canvasHeight());
-        target->clearRegion(regX, regY, regW, regH);
-        target->save();
-        target->setTransform(1, 0, 0, 1, 0, 0);
-        target->translate(cp5::canvasWidth() / 2.0, cp5::canvasHeight() / 2.0);
-        target->scale(solvedZoom, solvedZoom);
-        target->translate(-camX, -camY);
+        world.beginComposite(alpha, regX, regY, regW, regH);
     }
 
     static const ChildLists noChildren;
     const ChildLists& children = it != childMap.end() ? it->second : noChildren;
-
-    if (directFade) { target->save(); target->scaleAlpha(alpha); }
-    for (Entity* child : children.before) renderEntity(*target, sim, *child, now, applyAlpha, strokeScale, self, childMap, allowComposite);
-    if (e.style->flags & StyleFlags::isVisible) renderShape(*target, e, now, strokeScale, self.x, self.y, self.angle, self);
-    for (Entity* child : children.after) renderEntity(*target, sim, *child, now, applyAlpha, strokeScale, self, childMap, allowComposite);
-    if (directFade) target->restore();
-
-    if (composite) {
-        target->restore();
-        --scratchDepth;
-        ctx.save();
-        ctx.resetTransform();
-        ctx.scaleAlpha(alpha);
-        ctx.drawContext(*target, regX, regY, regW, regH, regX, regY, regW, regH);
-        ctx.restore();
-    }
+    for (Entity* child : children.before)
+        renderEntity(world, sim, *child, now, applyAlpha, strokeScale, self, childMap, allowComposite);
+    if (e.style->flags & StyleFlags::isVisible)
+        renderShape(world, e, now, strokeScale, self.x, self.y, self.angle, self, composite ? 1 : alpha);
+    for (Entity* child : children.after)
+        renderEntity(world, sim, *child, now, applyAlpha, strokeScale, self, childMap, allowComposite);
+    if (composite) world.endComposite();
 }
 
-void GameRendering::renderShape(cp5::Context& ctx, Entity& e, double now, double strokeScale, double x, double y, double angle,
-                                const Frame& root, WorldRenderer* gl, double alpha) {
+void GameRendering::renderShape(WorldBackend& world, Entity& e, double now, double strokeScale, double x, double y,
+                                double angle, const Frame& root, double alpha) {
     if (!e.physics) return;
     double rootDamageTime = root.rootDamageTime;
 
@@ -708,69 +618,8 @@ void GameRendering::renderShape(cp5::Context& ctx, Entity& e, double now, double
         fill = {fill.r * 0.7f + 76.5f, fill.g * 0.7f + 76.5f, fill.b * 0.7f + 76.5f};
     }
 
-    if (gl) {
-        double width = sides == 2 ? e.physics->width.getSmooth(now) : 0;
-        gl->shape(sides, e.physics->flags, e.style->flags, size, width, bw, x, y, angle, fill.pack(), strokeC.pack(), alpha);
-        return;
-    }
-
-    ctx.save();
-    ctx.translate(x, y);
-
-    if (sides == 1) {
-        ctx.beginPath();
-        ctx.arc(0, 0, size, 0, 2 * M_PI);
-        ctx.closePath();
-        ctx.setFillColor(fill.pack());
-        ctx.fill();
-        if (bw > 0) {
-            ctx.setStrokeColor(strokeC.pack());
-            ctx.setLineWidth(bw);
-            ctx.stroke();
-        }
-        ctx.restore();
-        return;
-    }
-
-    ctx.rotate(angle);
-    ctx.beginPath();
-    if (sides == 2) {
-        double width = e.physics->width.getSmooth(now);
-        if (e.physics->flags & PhysicsFlags::isTrapezoid) {
-            ctx.moveTo(-size * 0.5, -width * 0.5);
-            ctx.lineTo(size * 0.5, -width * 0.875);
-            ctx.lineTo(size * 0.5, width * 0.875);
-            ctx.lineTo(-size * 0.5, width * 0.5);
-            ctx.closePath();
-        } else {
-            ctx.rect(-size * 0.5, -width * 0.5, size, width);
-        }
-    } else if (sides >= 3) {
-        bool star = e.style->flags & StyleFlags::isStar;
-        int count = sides << (star ? 1 : 0);
-        double radius = size * 1.414214;
-        double offset = count == 4 ? M_PI / 4 : 0;
-        for (int i = 0; i < count; ++i) {
-            double r = (star && !(i & 1)) ? radius * 0.4 : radius;
-            double a = offset + i * 2 * M_PI / count;
-            if (i == 0) ctx.moveTo(std::cos(a) * r, std::sin(a) * r);
-            else ctx.lineTo(std::cos(a) * r, std::sin(a) * r);
-        }
-        ctx.closePath();
-    } else {
-        ctx.restore();
-        return;
-    }
-
-    ctx.setFillColor(fill.pack());
-    ctx.fill();
-    if (bw > 0) {
-        ctx.setLineJoin(cp5::LineJoin::round);
-        ctx.setStrokeColor(strokeC.pack());
-        ctx.setLineWidth(bw);
-        ctx.stroke();
-    }
-    ctx.restore();
+    double width = sides == 2 ? e.physics->width.getSmooth(now) : 0;
+    world.shape(sides, e.physics->flags, e.style->flags, size, width, bw, x, y, angle, fill.pack(), strokeC.pack(), alpha);
 }
 
 // ---- Names / health bars (world space) ----
@@ -1382,10 +1231,11 @@ void GameRendering::renderHUD(cp5::Context& ctx, Simulation& sim, double now, do
                 minimapContent->save();
                 minimapContent->scale(cpx / aw, cpx / ah);
                 minimapContent->translate(-arenaData->leftX, -arenaData->topY);
+                minimapWorld.begin(*minimapContent, camX, camY, solvedZoom);
                 for (Entity* e : sceneRoots) {
                     if (e == player) continue;
                     if (!e->physics || !(e->physics->flags & PhysicsFlags::showsOnMap)) continue;
-                    renderEntity(*minimapContent, sim, *e, now, false, 1.0, Frame{}, sceneChildren, false);
+                    renderEntity(minimapWorld, sim, *e, now, false, 1.0, Frame{}, sceneChildren, false);
                 }
                 minimapContent->restore();
             }

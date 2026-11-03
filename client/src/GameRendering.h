@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "cp5/CanvasWorld.h"
 #include "cp5/Context.h"
 #include "gl/WorldRenderer.h"
 #include "sim/Simulation.h"
@@ -108,12 +109,11 @@ private:
     void renderTankIcon(TankIcon& icon, int tankId, double scale);
     double screenRectX = 0, screenRectY = 0, screenRectW = 0, screenRectH = 0;
 
-    std::vector<std::unique_ptr<cp5::Context>> scratchPool;
     std::unique_ptr<cp5::Context> gridTile;
     // What the tile was last drawn with.
     double tileAlpha = -1, tileLineWidth = -1;
     uint32_t tileBackground = 0, tileGridColor = 0;
-    // GL arrow labels: drawLabel's text rastered at scale device pixels per world unit, its
+    // Arrow labels: drawLabel's text rastered at scale device pixels per world unit, its
     // origin margin pixels in from the left.
     struct ArrowLabel {
         std::unique_ptr<cp5::Context> canvas;
@@ -122,15 +122,15 @@ private:
     };
     std::unordered_map<std::string, ArrowLabel> arrowLabels;
     QuadTree debugTree;
-    size_t scratchDepth = 0;
     WorldRenderer worldRenderer;
+    CanvasWorld canvasWorld, minimapWorld;
 
     void solveCamera(Simulation& sim, double now);
-    // With gl, the grid, borders and arrows draw on the GL world canvas instead.
-    void renderGrid(cp5::Context& ctx, WorldRenderer* gl = nullptr);
+    // The line grid always draws on ctx; the solid and pattern backgrounds go to world.
+    void renderGrid(cp5::Context& ctx, WorldBackend& world);
     // Redraws the pattern tile when its look changed; true when it did.
     bool drawGridTile(double alpha);
-    void renderBorders(cp5::Context& ctx, Simulation& sim, WorldRenderer* gl = nullptr);
+    void renderBorders(Simulation& sim, WorldBackend& world);
     struct Frame {
         double x = 0, y = 0, angle = 0;
         // Damage flash and invuln blink come from the root, so parts flash with the body.
@@ -146,13 +146,13 @@ private:
     ChildMap sceneChildren;
     void rebuildScene(Simulation& sim);
 
-    void renderEntities(cp5::Context& ctx, Simulation& sim, double now, WorldRenderer* gl = nullptr);
-    void renderEntity(cp5::Context& ctx, Simulation& sim, Entity& e, double now, bool applyAlpha, double strokeScale, Frame parent,
-                      const ChildMap& childMap, bool allowComposite = true, WorldRenderer* gl = nullptr);
+    void renderEntities(WorldBackend& world, Simulation& sim, double now);
+    void renderEntity(WorldBackend& world, Simulation& sim, Entity& e, double now, bool applyAlpha, double strokeScale,
+                      Frame parent, const ChildMap& childMap, bool allowComposite = true);
     // Max extent of an entity plus its descendants (barrels reach past the body).
     double subtreeReach(Entity& e, double now, const ChildMap& childMap);
-    void renderShape(cp5::Context& ctx, Entity& e, double now, double strokeScale, double x, double y, double angle,
-                     const Frame& root, WorldRenderer* gl = nullptr, double alpha = 1);
+    void renderShape(WorldBackend& world, Entity& e, double now, double strokeScale, double x, double y, double angle,
+                     const Frame& root, double alpha = 1);
     void renderNames(cp5::Context& ctx, Simulation& sim, double now);
     void renderDebugCollisions(cp5::Context& ctx, double now);
     void renderDebugCollisions(cp5::Context& ctx, Entity& e, double now, const Frame& parent);
@@ -164,8 +164,7 @@ private:
     // frameOf through the entity's parents.
     Frame worldFrame(Simulation& sim, Entity& e, double now);
     void renderHealthBars(cp5::Context& ctx, Simulation& sim, double now);
-    void renderArrow(cp5::Context& ctx, const std::string& text, double tx, double ty, uint32_t color,
-                     WorldRenderer* gl = nullptr);
-    void renderLeaderArrow(cp5::Context& ctx, Simulation& sim, double now, WorldRenderer* gl = nullptr);
-    void renderMothershipArrows(cp5::Context& ctx, Simulation& sim, double now, WorldRenderer* gl = nullptr);
+    void renderArrow(WorldBackend& world, const std::string& text, double tx, double ty, uint32_t color);
+    void renderLeaderArrow(WorldBackend& world, Simulation& sim, double now);
+    void renderMothershipArrows(WorldBackend& world, Simulation& sim, double now);
 };
