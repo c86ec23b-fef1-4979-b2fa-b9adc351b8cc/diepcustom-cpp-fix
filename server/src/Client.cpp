@@ -459,9 +459,13 @@ void Client::ban() {
     }
 
     bannedClients.insert(ipAddress);
-    for (Client* client : game->clients) {
-        if (client->ipAddress == ipAddress) client->terminate();
+    std::vector<Client*> matches;
+    for (GameServer* g : GameServer::games) {
+        for (Client* client : g->clients) {
+            if (client->ipAddress == ipAddress) matches.push_back(client);
+        }
     }
+    for (Client* client : matches) client->terminate();
 }
 
 void Client::createAndSpawnPlayer(const std::string& name) {
